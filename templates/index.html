@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pothole Detection</title>
+</head>
+<body>
+    <h1>Pothole Detection</h1>
+
+    <!-- Camera & Capture -->
+    <button id="openCamera">Open Camera</button>
+    <video id="video" width="400" height="300" autoplay style="display: none;"></video>
+    <button id="capture" style="display: none;">Capture</button>
+
+    <!-- Display Captured Image -->
+    <canvas id="canvas" width="400" height="300" style="display: none;"></canvas>
+    <img id="capturedImage" style="display: none; max-width: 100%; height: auto;">
+
+    <!-- File Upload -->
+    <input type="file" id="fileInput" accept="image/*">
+
+    <!-- Detect Button -->
+    <button id="detect">Detect Pothole</button>
+
+    <h2>Result:</h2>
+    <img id="outputImage" style="display: none; max-width: 100%; height: auto;">
+
+    <script>
+        let video = document.getElementById("video");
+        let openCameraButton = document.getElementById("openCamera");
+        let captureButton = document.getElementById("capture");
+        let canvas = document.getElementById("canvas");
+        let ctx = canvas.getContext("2d");
+        let fileInput = document.getElementById("fileInput");
+        let detectButton = document.getElementById("detect");
+        let capturedImage = document.getElementById("capturedImage");
+        let outputImage = document.getElementById("outputImage");
+        let stream = null;
+        let capturedFile = null;
+        let selectedFile = null;
+
+        // Open Camera
+        openCameraButton.addEventListener("click", async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.style.display = "block";
+                captureButton.style.display = "block";
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                alert("Camera access denied!");
+            }
+        });
+
+        // Capture Image
+        captureButton.addEventListener("click", () => {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+                capturedFile = new File([blob], "captured.jpg", { type: "image/jpeg" });
+
+                // Display the captured image
+                let imgURL = URL.createObjectURL(blob);
+                capturedImage.src = imgURL;
+                capturedImage.style.display = "block";
+
+                // Stop the camera
+                video.style.display = "none";
+                captureButton.style.display = "none";
+                stream.getTracks().forEach(track => track.stop()); // Stop the camera
+
+                // Reset file input selection
+                fileInput.value = "";
+                selectedFile = null; // Remove any previously selected file
+            }, "image/jpeg");
+        });
+
+        // Handle File Upload
+        fileInput.addEventListener("change", () => {
+            if (fileInput.files.length > 0) {
+                selectedFile = fileInput.files[0];
+
+                // Display the selected image
+                let imgURL = URL.createObjectURL(selectedFile);
+                capturedImage.src = imgURL;
+                capturedImage.style.display = "block";
+
+                // Reset captured image
+                capturedFile = null; // Remove previously captured image
+            }
+        });
+
+        // Send Image to Backend
+        detectButton.addEventListener("click", () => {
+            let formData = new FormData();
+            let imageFile = capturedFile || selectedFile;
+
+            if (!imageFile) {
+                alert("No image selected or captured!");
+                return;
+            }
+
+            formData.append("image", imageFile);
+
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.output_image) {
+                    outputImage.src = data.output_image;
+                    outputImage.style.display = "block";
+                } else {
+                    alert("Error in detection!");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+        });
+    </script>
+</body>
+</html>
