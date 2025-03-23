@@ -4,27 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pothole Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e2f;
+            color: #ffffff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #ffcc00;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #2a2a3a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(255, 204, 0, 0.3);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .container:hover {
+            transform: scale(1.02);
+        }
+
+        button, input {
+            background: #ffcc00;
+            border: none;
+            padding: 10px 15px;
+            margin: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s ease-in-out;
+        }
+
+        button:hover, input:hover {
+            background: #ff9900;
+        }
+
+        video, canvas, img {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.2);
+            margin-top: 10px;
+        }
+
+        .severity {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        #roadCondition {
+            font-size: 16px;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
     <h1>Pothole Detection</h1>
-
-    <!-- Camera & Capture -->
-    <button id="openCamera">Open Camera</button>
-    <video id="video" width="400" height="300" autoplay style="display: none;"></video>
-    <button id="capture" style="display: none;">Capture</button>
-
-    <!-- Display Captured Image -->
-    <canvas id="canvas" width="400" height="300" style="display: none;"></canvas>
-    <img id="capturedImage" style="display: none; max-width: 100%; height: auto;">
-
-    <!-- File Upload -->
-    <input type="file" id="fileInput" accept="image/*">
-
-    <!-- Detect Button -->
-    <button id="detect">Detect Pothole</button>
-
-    <h2>Result:</h2>
-    <img id="outputImage" style="display: none; max-width: 100%; height: auto;">
+    <div class="container">
+        <button id="openCamera">Open Camera</button>
+        <video id="video" width="400" height="300" autoplay style="display: none;"></video>
+        <button id="capture" style="display: none;">Capture</button>
+        <canvas id="canvas" width="400" height="300" style="display: none;"></canvas>
+        <img id="capturedImage" style="display: none;">
+        <input type="file" id="fileInput" accept="image/*">
+        <button id="detect">Detect Pothole</button>
+        <h2>Result:</h2>
+        <img id="outputImage" style="display: none;">
+        <p id="potholeCount" class="severity"></p>
+        <p id="roadCondition"></p> <!-- New road condition message -->
+    </div>
 
     <script>
         let video = document.getElementById("video");
@@ -36,11 +103,12 @@
         let detectButton = document.getElementById("detect");
         let capturedImage = document.getElementById("capturedImage");
         let outputImage = document.getElementById("outputImage");
+        let potholeCountText = document.getElementById("potholeCount");
+        let roadConditionText = document.getElementById("roadCondition");
         let stream = null;
         let capturedFile = null;
         let selectedFile = null;
 
-        // Open Camera
         openCameraButton.addEventListener("click", async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -53,53 +121,38 @@
             }
         });
 
-        // Capture Image
         captureButton.addEventListener("click", () => {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             canvas.toBlob((blob) => {
                 capturedFile = new File([blob], "captured.jpg", { type: "image/jpeg" });
-
-                // Display the captured image
                 let imgURL = URL.createObjectURL(blob);
                 capturedImage.src = imgURL;
                 capturedImage.style.display = "block";
-
-                // Stop the camera
                 video.style.display = "none";
                 captureButton.style.display = "none";
-                stream.getTracks().forEach(track => track.stop()); // Stop the camera
-
-                // Reset file input selection
+                stream.getTracks().forEach(track => track.stop());
                 fileInput.value = "";
-                selectedFile = null; // Remove any previously selected file
+                selectedFile = null;
             }, "image/jpeg");
         });
 
-        // Handle File Upload
         fileInput.addEventListener("change", () => {
             if (fileInput.files.length > 0) {
                 selectedFile = fileInput.files[0];
-
-                // Display the selected image
                 let imgURL = URL.createObjectURL(selectedFile);
                 capturedImage.src = imgURL;
                 capturedImage.style.display = "block";
-
-                // Reset captured image
-                capturedFile = null; // Remove previously captured image
+                capturedFile = null;
             }
         });
 
-        // Send Image to Backend
         detectButton.addEventListener("click", () => {
             let formData = new FormData();
             let imageFile = capturedFile || selectedFile;
-
             if (!imageFile) {
                 alert("No image selected or captured!");
                 return;
             }
-
             formData.append("image", imageFile);
 
             fetch("/upload", {
@@ -111,6 +164,32 @@
                 if (data.output_image) {
                     outputImage.src = data.output_image;
                     outputImage.style.display = "block";
+                    let potholeCount = data.pothole_count || 0;
+                    potholeCountText.innerText = `Potholes Detected: ${potholeCount}`;
+
+                    // Assign severity level
+                    let conditionMessage = "";
+                    let bgColor = "#4caf50"; // Default green
+
+                    if (potholeCount === 0) {
+                        conditionMessage = "Excellent - The road is in great condition! 🚗💨";
+                    } else if (potholeCount <= 2) {
+                        conditionMessage = "Good - Minor issues, safe for driving. ✅";
+                    } else if (potholeCount <= 5) {
+                        conditionMessage = "Moderate - Noticeable damage, drive carefully. ⚠️";
+                        bgColor = "#ffcc00";
+                    } else if (potholeCount <= 10) {
+                        conditionMessage = "Poor - Road condition is bad, repairs needed. 🚧";
+                        bgColor = "#ff9900";
+                    } else {
+                        conditionMessage = "Critical - Unsafe road! Immediate maintenance required. ❌";
+                        bgColor = "#ff4c4c";
+                    }
+
+                    roadConditionText.innerText = conditionMessage;
+                    roadConditionText.style.backgroundColor = bgColor;
+                    roadConditionText.style.padding = "10px";
+                    roadConditionText.style.borderRadius = "10px";
                 } else {
                     alert("Error in detection!");
                 }

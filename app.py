@@ -1,3 +1,6 @@
+# Class     Images  Instances      Box(P          R      mAP50  mAP50-95):
+#    all         16         25      0.873       0.64      0.701      0.336
+
 from flask import Flask, request, jsonify, send_from_directory, render_template
 import os
 import cv2
@@ -40,12 +43,14 @@ def upload_file():
     if not results:
         return jsonify({'error': 'No detections made'}), 500
 
+    print("results are",results)
     # Get annotated image
     result = results[0]  
+    pothole_count = len(result.boxes)
     annotated_image = result.plot()  
 
     # Convert to BGR format before saving
-    annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR)
+    annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
 
     # Save the processed image
     output_filename = "output_" + file.filename
@@ -53,7 +58,8 @@ def upload_file():
     cv2.imwrite(output_path, annotated_image)
 
     # Return the path of the processed image
-    return jsonify({'output_image': f"/uploads/{output_filename}"})
+    return jsonify({'output_image': f"/uploads/{output_filename}",'pothole_count': pothole_count})
+    # return jsonify({'output_image': f"/uploads/{output_filename}"})
 
 # Route to serve processed images
 @app.route('/uploads/<filename>')
