@@ -20,7 +20,8 @@ model = YOLO(model_path)
 
 @app.route('/')
 def home():
-    return send_from_directory('.', 'index.html') 
+    # return send_from_directory('.', 'index.html') 
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -39,15 +40,24 @@ def upload_file():
 
     # Perform pothole detection
     results = model(image_path)
-
-    if not results:
-        return jsonify({'error': 'No detections made'}), 500
-
     print("results are",results)
     # Get annotated image
     result = results[0]  
     pothole_count = len(result.boxes)
     annotated_image = result.plot()  
+    if len(result.boxes)<1:
+        # Convert to BGR format before saving
+        annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
+
+        # Save the processed image
+        output_filename = "output_" + file.filename
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+        cv2.imwrite(output_path, annotated_image)
+
+        # Return the path of the processed image
+        return jsonify({'output_image': f"/uploads/{output_filename}",'pothole_count': '0'})
+
+   
 
     # Convert to BGR format before saving
     annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
