@@ -14,12 +14,14 @@
             padding: 20px;
         }
 
-        h1 {
-            color: #ffcc00;
+        h1,.title {
+            color: white;
+            font-size: 2.5rem;
         }
 
         .container {
             background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
             max-width: 600px;
             margin: auto;
             /* background: #ffffff; */
@@ -27,7 +29,6 @@
             border-radius: 15px;
             /* box-shadow: 0 4px 10px rgba(255, 204, 0, 0.3); */
             transition: transform 0.3s ease-in-out;
-            backdrop-filter: blur(10px);
         }
 
         .container:hover {
@@ -81,7 +82,7 @@
     </style>
 </head>
 <body style="background: url('static/image.png') no-repeat center center fixed; background-size: cover; z-index: -1;">
-    <h1>Pothole Detection</h1>
+    <h1 class="title">Pothole Detection</h1>
     <div class="container">
         <button id="openCamera">Open Camera</button>
         <video id="video" width="400" height="300" autoplay style="display: none;"></video>

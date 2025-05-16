@@ -36,11 +36,11 @@ def upload_file():
     image_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(image_path)
 
-    print(f"📂 Uploaded Image: {image_path}")
+    # print(f"📂 Uploaded Image: {image_path}")
 
     # Perform pothole detection
     results = model(image_path)
-    print("results are",results)
+    # print("results are",results)
     # Get annotated image
     result = results[0]  
     pothole_count = len(result.boxes)
